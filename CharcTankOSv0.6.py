@@ -37,55 +37,51 @@ import logging
 
 
 
-##MARK: Comment / uncomment to test
-# os.system ('sudo killall pigpiod') # just to make sure its not already running
-# os.system ("sudo pigpiod") #Launching GPIO library.  May need to run sudo killall pigpiod" if getting a binding error
-# sleep(1) # As i said it is too impatient and so if this delay is removed you will get an error
-# import pigpio #importing GPIO library for PWM.  can also be used for reading the DHT
-# import adafruit_dht as dht
-# from board import D2 # pin for temp and humidity
+
+##MARK:
+os.system ('sudo killall pigpiod') # just to make sure its not already running
+os.system ("sudo pigpiod") #Launching GPIO library.  May need to run sudo killall pigpiod" if getting a binding error
+sleep(1) # As i said it is too impatient and so if this delay is removed you will get an error
+import pigpio #importing GPIO library for PWM.  can also be used for reading the DHT
+import adafruit_dht as dht
+from board import D2 # pin for temp and humidity
 
 logger = logging.getLogger('root')
 FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 logging.basicConfig(format=FORMAT)
-logger.setLevel(logging.DEBUG)
-# logger.setLevel(logging.CRITICAL) #uncomment if you want to disable debug messages
+# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.CRITICAL) #uncomment if you want to disable debug messages
 
 
-
-##MARK: Comment / uncomment to test
+peltierEscMin = 1200
+peltierEscMax = 1800
+peltierEscMid = 1650
+peltierESCPulseWidth = 700
+##MARK:
 # setup peltierESC
-# peltierPins = [13,19]
-# peltierPowerLevel = 0
+peltierPins = [13,19]
+peltierPowerLevel = 0
+peltierESC = 13  #Connect the peltierESC in this GPIO pin 
+#setup multiple GPIOs because using PWM and Servo on the same will mess each other up
+piGPIO = pigpio.pi() 
+# piGPIO.hardware_PWM(peltierESC, PWMfreq=20000,PWMduty=1000000)
+# piGPIO.set_PWM_dutycycle(peltierESC, 255)
+# piGPIO.hardware_PWM(peltierESC, 20000, 0)
 
+piGPIO.set_servo_pulsewidth(peltierESC, peltierEscMin) #for my ESC, this is all it needs to calibrate.  Check your manual.
+dhtDevice = dht.DHT22(D2) # only init device once
+# setup fridge and humidifier
+fridgePin = 17
+humidifierPin = 27
+isFridgeOn = piGPIO.read(fridgePin) #read the pin state to see if the pin is on or off
+isHumidifierOn = piGPIO.read(humidifierPin)#read the pin state to see if the pin is on or off
 
-# piGPIO = pigpio.pi() 
-
-##MARK: IF USING AN ESC INSTEAD OF A CUSTOM CONTROLLER, UNCOMMENT THE NEXT SIX LINES AND SET customPeltierController to False.
-## THIS WILL LET THE REST OF THE PROGRAM KNOW HOW TO HANDLE THINGS.  FOR THE ESC MIN AND MAX, YOU WILL NEED TO PLAY AROUND WITH THE VALUES 
-## FOR YOUR ESC IF YOU'RE NOT USING A HOBBYWING QUICRUN 1060
-# peltierEscMin = 1200 
-# peltierEscMax = 1800
-# peltierEscMid = 1650
-# peltierESCPulseWidth = 700
-# peltierESC = 13  #Connect the peltierESC in this GPIO pin 
-# piGPIO.set_servo_pulsewidth(peltierESC, peltierEscMin) #for my ESC, this is all it needs to calibrate.  Check your manual.
-customPeltierController = True
-
-##MARK: Comment / uncomment to test
-# dhtDevice = dht.DHT22(D2) # only init device once
-# # setup fridge and humidifier
-# fridgePin = 17
-# humidifierPin = 27
-# isFridgeOn = piGPIO.read(fridgePin) #read the pin state to see if the pin is on or off
-# isHumidifierOn = piGPIO.read(humidifierPin)#read the pin state to see if the pin is on or off
-
-
+customPeltierControler = True
 hOffset = 0 #used to calibrate humidity sensor
 tOffset = 0
-##MARK: Comment / uncomment to test
-# filename = 'CharcTankData.csv'
-filename = '../test.csv'
+##MARK:
+#filename = 'CharcTankData.csv'
+filename = 'test.csv'
 df = pd.read_csv(filename, index_col=0, parse_dates=True)
 writeData = True
 
@@ -98,14 +94,14 @@ root = Tk() #init tk
 root.title("CharcTankOS")
 
 root.geometry("800x480")
-##MARK: Comment / uncomment to test
-# root.attributes('-fullscreen', True)
-# root.config(cursor="none")
+##MARK
+root.attributes('-fullscreen', True)
+root.config(cursor="none")
 
 labelFont = tkFont.nametofont("TkDefaultFont")
 labelFont.config(size= 12)
 def_font = tkFont.nametofont("TkDefaultFont")
-def_font.config(size=20)
+def_font.config(size=15)
 bgColor = 'grey7'
 fgColor = 'lightgrey'
 
@@ -132,14 +128,13 @@ ax = fig.add_subplot(111)
 
 lf = ttk.Frame(middleFrame)
 canvas = FigureCanvasTkAgg(fig, master = lf)
-
+# filteredDF = pd.DataFrame()
 graphDF = pd.DataFrame()
 graphDFlen = 0
 currentTemp = 0
 currentRH = 0
 averageTemp = 0
 averageRH = 0
-
 
 previousHumidityReading = 0
 timerIndex = 0
@@ -181,8 +176,6 @@ try:
     lSetpointRH = settingsJSON['rhLow']
     hOffset = settingsJSON['hOffset']
     humidifierOn=settingsJSON['humidifierOn']
-    with open(settingsJSONLocation, "w") as f:
-        json.dump(settingsJSON, f)
 except Exception as e:
     logger.critical('Error with settings from Firebase')
     logger.critical(e)
@@ -321,36 +314,6 @@ except Exception as e:
     logger.critical('Error connecting to Firebase')
     logger.critical(e)
 
-class ProgramFrameWidgets(Frame):
-    def __init__(self):
-        self.files = [f.name for f in os.scandir("./Programs") if not f.name.startswith('.')] #creates list from files in dir
-
-        self.listItems = StringVar(value=self.files)
-        self.programsListBox = Listbox(middleFrame, listvariable=self.listItems, height=15, selectmode=BROWSE, font = def_font)
-        self.programsListBox.grid(column=1, row=0, rowspan=5, columnspan=4, sticky='nsew')
-        self.scrollbar = ttk.Scrollbar(middleFrame,orient='vertical',command=self.programsListBox.yview)
-        self.programsListBox['yscrollcommand'] = self.scrollbar.set
-        self.scrollbar.grid(column=5, row=1, sticky='ns', rowspan=5)
-        self.programsListBox.bind('<<ListboxSelect>>', self.onSelect)
-        self.selectedProgram = False
-        self.runButton = Button(middleFrame, text= 'Run Program', command=self.runProgram)
-        self.runButton.grid(row=1, column=0)
-        
-    
-    def runProgram(self):
-        ## TODO: load and run program.  Might need to have this outside of the class so that it doesnt get reinstanciated every time
-        ## the view loads???
-        logger.debug('run program pressed')
-
-    def onSelect(self, evt):
-        # Note here that Tkinter passes an event object to onselect()
-        w = evt.widget
-        index = int(w.curselection()[0])
-        value = w.get(index)
-        self.selectedProgram = value
-        logger.debug('You selected item %d: "%s"' % (index, value))
-
-    
 
 
 
@@ -470,7 +433,7 @@ class HumidityFrameWidgets(Label, Button):
         self.highSetButton = Button(middleFrame, text= 'High Set Point', command=self.hRhClick)
         self.targetSetButton = Button(middleFrame, text= 'Target Humidity', command= self.targetRhClick)
         self.lowSetButton = Button(middleFrame, text= ' Low Set Point', command= self.lRhClick)
-        self.humidifierButton = Button(middleFrame,text= ' Humidifier On Set Point', command=self.humidifierButtonClick)
+        self.humidifierButton = Button(middleFrame,text= ' Humidifier On Set Point')
         self.offsetButton = Button(middleFrame, text= 'Offset', command= self.rhOffset)
         self.highSetValue = Label(middleFrame, text = str('%.1f' % hSetpointRH)+ '%')
         self.targetSetValue = Label(middleFrame, text = str('%.1f' % midSetpointRH)+ '%')
@@ -488,7 +451,6 @@ class HumidityFrameWidgets(Label, Button):
                             self.targetSetValue,
                             self.lowSetValue,
                             self.offsetValue,
-                            self.humidifierButton,
                             self.humidifierOnValue]
     
     def arrowUpClick(self):
@@ -572,25 +534,20 @@ class HumidityFrameWidgets(Label, Button):
     def rhOffset(self):
         self.selecteButton = self.offsetButton
         logger.debug('temp offset pressed')
-    def humidifierButtonClick(self):
-        self.selecteButton = self.humidifierButton
-        logger.debug('humidifier Button pressed')
 
 class StatsFrameWidgets(Label):
     def __init__(self):
-        self.labelFont = tkFont.nametofont("TkDefaultFont")
-        self.labelFont.config(size= 20)
         self.widgetList = []
-        self.tempLabel = Label(middleFrame,text="Current\nTemperature", font= self.labelFont)
-        self.rhLabel = Label(middleFrame, text= "Current\nHumidity", font= self.labelFont)
+        self.tempLabel = Label(middleFrame,text="Current\nTemperature", font= ("TkDefaultFont", 10))
+        self.rhLabel = Label(middleFrame, text= "Current\nHumidity", font= ("TkDefaultFont", 10))
         self.tempValueLabel = Label(middleFrame, text = str(currentTemp) + 'F')
         self.rhValueLabel = Label(middleFrame, text = str(currentRH) + '%')
-        self.twentyFourAvgTempLabel = Label(middleFrame, text = '24h Average\nTemperature', font=self.labelFont)
-        self.twentyFourAvgHumidityLabel = Label(middleFrame, text = '24h Average\nHumidity', font=self.labelFont, pady=10)
+        self.twentyFourAvgTempLabel = Label(middleFrame, text = '24h Average\nTemperature', font=("TkDefaultFont", 10))
+        self.twentyFourAvgHumidityLabel = Label(middleFrame, text = '24h Average\nHumidity', font=("TkDefaultFont", 10), pady=10)
         
         self.twentyFourAvgHumidityValue = Label(middleFrame, text = str('%.1f' % averageRH) + '%')
         self.twentyFourAvgTempValue = Label(middleFrame, text = str('%.2f' % averageTemp) + 'F')
-        self.peltierPower = Label(middleFrame, text = 'Peltier Power', font=self.labelFont)
+        self.peltierPower = Label(middleFrame, text = 'Peltier Power', font=("TkDefaultFont", 10))
         self.peltierPowerValue = Label(middleFrame,text = '0%')
 
 SFW = StatsFrameWidgets()
@@ -721,6 +678,8 @@ def handleHumidifier(h):
         turnHumidifierOff()
         isHumidifierOn = False
 
+
+
 def getTandH():
     global df, graphDF, currentTemp, currentRH, writeData
     #Read Temp and Hum from DHT22
@@ -733,18 +692,22 @@ def getTandH():
 
 
         logger.debug(timeStamp + 'Temp={0:0.2f}*F  Humidity={1:0.1f}%'.format(t,h))
-    
+        # calculatePeltierPower(h)
+        # handleFridge(t)
+        # handleHumidifier(h)
         # Set this bool up by the peltierPins.  If using the custom controler, will us PWM to adjust power.
         # If using an ESC, will adjust power using servo pulse width
-        if customPeltierController == True:
-            threading.Thread(target=calculatePeltierPower,args=(h,)).start()
+        if customPeltierControler == True:
+            #threading.Thread(target=calculatePeltierPower,args=(h,)).start()
+            calculatePeltierPower(h)
         else:
-            threading.Thread(target=setPeltierESC,args=(h,)).start()
+            #threading.Thread(target=setPeltierESC,args=(h,)).start()
+            setPeltierESC(h)
         
-        
-        threading.Thread(target=handleFridge, args=(t,)).start()
-        threading.Thread(target=handleHumidifier, args=(h,)).start()
-        
+        #threading.Thread(target=handleFridge, args=(t,)).start()
+        #threading.Thread(target=handleHumidifier, args=(h,)).start()
+        handleFridge(t)
+        handleHumidifier(t)
 
         if t < 90 and h <101: # and writeData == True:
             with open(filename, 'a') as f: #will open the file and close it once the block of code is done
@@ -788,8 +751,9 @@ def getTandH():
         logger.critical('exception in getTandH()')
         logger.critical(e)
         
-    root.after(5000, getTandH) #schedules the function to run again in 2.5 seconds
-
+    root.after(5000, threadGetTandH) #schedules the function to run again in 2.5 seconds
+    
+    
 def animate(i):
     logger.debug('animate')
 
@@ -829,7 +793,7 @@ def updateAvgRH():
     SFW.twentyFourAvgHumidityValue.after(60000, updateAvgRH)
 
 def updatePeltierPower():
-    if customPeltierController == True:
+    if customPeltierControler == True:
         percent = str('%.1f' % peltierPowerLevel) + '%'
         SFW.peltierPowerValue.config(text= percent)
         SFW.peltierPowerValue.after(5000,updatePeltierPower)
@@ -837,6 +801,10 @@ def updatePeltierPower():
         percent = str('%.1f' % calculateESCPeltierPower()) + '%'
         SFW.peltierPowerValue.config(text= percent)
         SFW.peltierPowerValue.after(5000,updatePeltierPower)
+
+# def updatePeltierPower():
+
+    # percent = str('%.1f' % pelti) + '%'
 
 
 def allChildren (window) :
@@ -850,20 +818,29 @@ def allChildren (window) :
 
 def graph(time):
     logger.debug('graph button clicked')
-
+    # logger.debug(style.available)
     style.use('seaborn-bright')
     timeStamp= datetime.now()
     previousTime = timeStamp - timedelta(hours=time)
     timeStampNow = timeStamp.strftime("%m-%d-%Y %H:%M:%S")
     previousTime = previousTime.strftime("%m-%d-%Y %H:%M:%S")
- 
+    # global filteredDF
+    # filteredDF = df.loc[previousTime : timeStampNow]
+    # logger.debug(filteredDF)
     global graphDF, graphDFlen, line
 
     graphDF = df.loc[previousTime : timeStampNow] #this creates the DF that will be used for animating the graph
     graphDFlen = len(graphDF) #global variable so we know how long the list should be for the given graph
     logger.debug(len(graphDF))
     
-
+    # del filteredDF['Time']
+    # logger.debug(len(filteredDF))
+    # filteredDF.plot()
+    # SFW.widgetList = allChildren(middleFrame)
+    # # logger.debug(widgetList)
+    # for item in SFW.widgetList:
+    #     item.forget()#use destroy.  forget just hides it
+    
     
     ax.clear()
     line = ax.plot(graphDF) #do this first so that the dates can be formatted
@@ -871,10 +848,15 @@ def graph(time):
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M')) #format dates as hours and minutes
     ax.xaxis_date()     # interpret the x-axis values as dates
     fig.autofmt_xdate() # make space for and rotate the x-axis tick labels
+
+    # plt.show() # this will load the graph in a separate window.
+
+    #load graph on canvas in TK
+    # lf = ttk.Frame(middleFrame)
     lf.grid(row=0, column=2, padx=0, pady=0, columnspan=4, rowspan=4)
-
+    # canvas = FigureCanvasTkAgg(fig, master = lf)
     canvas.draw()
-
+    # canvas.get_tk_widget().grid(row=0, column=3, columnspan= 5)
     canvas.get_tk_widget().pack(side= RIGHT, fill= BOTH, expand= True)
 
     
@@ -905,12 +887,11 @@ def humidityButtonClick():
     HFW.targetSetButton.grid(row = 1, column = 2, sticky='nsew', columnspan=2)
     HFW.lowSetButton.grid(row = 2, column = 2, sticky='nsew', columnspan=2)
     HFW.offsetButton.grid(row = 3, column = 2, sticky='nsew', columnspan=2)
-    HFW.humidifierButton.grid(row = 4, column = 2, sticky='nsew', columnspan = 2, rowspan=2)
     HFW.highSetValue.grid(row = 0, column = 4, sticky='nsew', columnspan=2)
     HFW.targetSetValue.grid(row = 1, column = 4, sticky='nsew', columnspan=2)
     HFW.lowSetValue.grid(row = 2, column = 4, sticky='nsew', columnspan=2)
     HFW.offsetValue.grid(row = 3, column = 4, sticky='nsew', columnspan=2)
-    HFW.humidifierOnValue.grid(row = 4, column = 4, sticky='nsew', columnspan = 2, rowspan=2)
+
     x , y = middleFrame.grid_size() #(columns, rows)
 
     for c in range(0,x):
@@ -944,16 +925,8 @@ def tempBottonClick():
     Grid.rowconfigure(middleFrame, 4, weight = 0)
     Grid.rowconfigure(middleFrame, 5, weight = 0)
     logger.debug('temp button pressed')
-
-
-
 def programsButtonClick():
-    currentWidgets = allChildren(middleFrame)
-    for widget in currentWidgets: 
-        widget.grid_forget()
-    PFW = ProgramFrameWidgets()
     logger.debug('Programs button pressed')
-
 def tecButtonClick():
     logger.debug('TEC button pressed')
 
@@ -994,11 +967,10 @@ def settingsButtonClick():
     logger.debug("settings button pressed")
 
 def statsButtonClick():
-    currentWidgets = allChildren(middleFrame)
-    for widget in currentWidgets: 
-        widget.grid_forget()
-    graph(2)
     
+    graph(2)
+    # bottomBarFrame.pack_forget()
+    # global settingsWidgets 
     bottomButtonsToRemove = bottomBarFrame.winfo_children()
     for button in bottomButtonsToRemove:
         button.destroy()
@@ -1072,7 +1044,7 @@ def clearOldFirebaseData():
         dfJSON = df.to_json(orient='index')
         historyRef.set(dfJSON)
     except Exception as e:
-        logger.critical('Error clearing old Firebase data')
+        logger.critical('Error connecting to Firebase')
         logger.critical(e)
 
 def splitCSV():
@@ -1085,20 +1057,16 @@ def splitCSV():
     root.after(lengthOfDaysMS, splitCSV)
     clearOldFirebaseData()
 
-def setValues(Path):
+def setValues():
     global tempSet, tempHighSet, tempLowSet, hSetpointRH, lSetpointRH, midSetpointRH, humidifierOn, timerIndex
-    tempHighDifference = tempHighSet - tempSet
-    tempLowDifference = tempSet - tempLowSet
-    RHhighDifference = hSetpointRH - midSetpointRH
-    RHlowDifference = midSetpointRH - lSetpointRH
-    programDF = pd.read_csv(Path)
-    
-
     
 
 
     timerIndex +=1
 
+def threadGetTandH():
+    
+    getTandHthread = threading.Thread(target=getTandH, daemon=True).start()
 
 barHeight = 2
 pixel = PhotoImage(width=1, height=1)
@@ -1134,18 +1102,19 @@ topBarFrame.pack(fill='x')
 statsButtonClick()
 setupStatsMiddleFrame()
 graph(2)
-##MARK: Comment / uncomment to test
-# updateCurrentTemp()
-# updateCurrentRH()
-# updateAvgTemp()
-# updateAvgRH()
-# updatePeltierPower()
+updateCurrentTemp()
+updateCurrentRH()
+updateAvgTemp()
+updateAvgRH()
+updatePeltierPower()
+
+
+##MARK:
 # root.after(0, getTandH) #reads temp and humidity every 5 seconds in tkinter loop
-
-
+root.after(0, threadGetTandH)
 ani = animation.FuncAnimation(fig, animate, interval = 5000)
 lengthOfDaysMS = getLengthOfDaysMS(4)
-root.after(lengthOfDaysMS, splitCSV)
+#root.after(lengthOfDaysMS, splitCSV)
 
 
 root.mainloop() #this creates the loop that keep the script running and refreshes the display

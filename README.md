@@ -8,6 +8,8 @@ There are lines that need to be uncommented  / commented out depending on how yo
 
 For more details on the curing chamber construction, see my post on Reddit
 
+You will also need to get image files for the up and down arrow to be placed in the working directory.  I used some from a program called icons8 called "sort-down.png" and "sort-up.png"  icons8 is a free download.
+
 https://www.reddit.com/r/Charcuterie/comments/orfh1o/my_fully_automated_custom_made_charctank_powered/?utm_source=share&utm_medium=ios_app&utm_name=iossmf
 
 Edit 8/8/2021: Added STL for TEC manifold.  I printed it out of PETG 20% infill.  I think it could be made out of PLA, but I didnt know at the time how much heat would be generated and didnt want to run into issues of warping.  To install this, you will need a 4in hole saw.  I designed all the printed parts in Fusion360 so I will include the links to those files in case anyone wants to make modifications. While the box that holds all the electronics is functional, some of the screw holes are slightly off so they will need to be modified if you're super OCD.  I'm able to hold each board down with one or two screws, so that was good enough for me.  Plus the electroics box takes over a day to print and since it takes up most of the bed, it's very prone to warping at the edges even with my enclosure.    

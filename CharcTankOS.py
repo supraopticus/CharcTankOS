@@ -49,8 +49,8 @@ from board import D2 # pin for temp and humidity
 logger = logging.getLogger('root')
 FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 logging.basicConfig(format=FORMAT)
-# logger.setLevel(logging.DEBUG)
-logger.setLevel(logging.CRITICAL) #uncomment if you want to disable debug messages
+logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.CRITICAL) #uncomment if you want to disable debug messages
 
 
 peltierEscMin = 1200
@@ -674,12 +674,17 @@ def handleFridge(t):
 
 def handleHumidifier(h):
     global isHumidifierOn
+    print(humidifierOn)
+    print(isHumidifierOn)
     if h < humidifierOn and isHumidifierOn == False:
         turnHumidifierOn()
         isHumidifierOn = True
-    if h > humidifierOn and isHumidifierOn == True:
+    else:
         turnHumidifierOff()
         isHumidifierOn = False
+    #if h > humidifierOn and isHumidifierOn == True:
+    #    turnHumidifierOff()
+    #    isHumidifierOn = False
 
 
 
@@ -710,7 +715,7 @@ def getTandH():
         #threading.Thread(target=handleFridge, args=(t,)).start()
         #threading.Thread(target=handleHumidifier, args=(h,)).start()
         handleFridge(t)
-        handleHumidifier(t)
+        handleHumidifier(h)
 
         if t < 90 and h <101: # and writeData == True:
             with open(filename, 'a') as f: #will open the file and close it once the block of code is done

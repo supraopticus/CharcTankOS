@@ -679,12 +679,12 @@ def handleHumidifier(h):
     if h < humidifierOn and isHumidifierOn == False:
         turnHumidifierOn()
         isHumidifierOn = True
-    else:
-        turnHumidifierOff()
-        isHumidifierOn = False
-    #if h > humidifierOn and isHumidifierOn == True:
-    #    turnHumidifierOff()
-    #    isHumidifierOn = False
+    # else:
+    #     turnHumidifierOff()
+    #     isHumidifierOn = False
+    if h > humidifierOn and isHumidifierOn == True:
+       turnHumidifierOff()
+       isHumidifierOn = False
 
 
 
@@ -1017,7 +1017,7 @@ def statsButtonClick():
 
 
     middleFrame.pack(fill= 'x') #since the widgets are already created, this will put them back in their place
-    logger.debug(middleFrame.winfo_height(), topBarFrame.winfo_height(), bottomBarFrame.winfo_height())
+    #logger.debug(middleFrame.winfo_height(), topBarFrame.winfo_height(), bottomBarFrame.winfo_height())
 
 
 def setupStatsMiddleFrame():
@@ -1072,9 +1072,9 @@ def setValues():
 
     timerIndex +=1
 
-def threadGetTandH():
+# def threadGetTandH():
     
-    getTandHthread = threading.Thread(target=getTandH, daemon=True).start()
+#     getTandHthread = threading.Thread(target=getTandH, daemon=True).start()
 
 barHeight = 2
 pixel = PhotoImage(width=1, height=1)
